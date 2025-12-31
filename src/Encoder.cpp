@@ -39,26 +39,19 @@
 //               Pin2 __|       |_______|       |_______|   Pin2
 //   B ->                   I (-) B3  B2  B1  I
 
-enum class EncoderStates
-{
-	INIT = 0,
-	F1 = 11,
-	F2 = 12,
-	F3 = 13,
-	B1 = 21,
-	B2 = 22,
-	B3 = 23
-};
-
 typedef struct
 {
-	EncoderStates state = EncoderStates::INIT;
 	uint8_t pin1, pin2;
+
+	uint8_t v1 = 1, v2 = 1;
+	int8_t direction = 0;
+	// direction and transitions could be one variable
+	// substep counting but with initial threshold would be ideal
+	uint8_t successfulTransitions = 0;
+
 	int32_t position = 0;
+
 	int32_t interruptCount = 0;
-	int32_t stateBackCount = 0;
-	int32_t stateStayCount = 0;
-	unsigned long lastCall = 0;
 
 } Encoder_internal_state_t;
 
@@ -119,10 +112,50 @@ public:
 	static void isrUpdate(void *arg)
 	{
 		auto carg = static_cast<Encoder_internal_state_t *>(arg);
-			carg->interruptCount++;
-			update(carg);
+		carg->interruptCount++;
+		update(carg);
 	}
 
+	// Starting Encoding is 1 1 (at least for JoyIt Encoder, )
+	static void update(Encoder_internal_state_t *arg)
+	{
+		uint8_t w1 = digitalRead(arg->pin1);
+		uint8_t w2 = digitalRead(arg->pin2);
+
+		if(w1 == arg->v1 && w2 == arg->v2) {
+			return;
+		}
+
+		if (arg->direction == 0)
+		{
+			arg->direction = getDirectionFromTransition(arg->v1, arg->v2, w1, w2);
+		}
+		else
+		{
+			auto _direction = getDirectionFromTransition(arg->v1, arg->v2, w1, w2);
+			if (_direction == arg->direction)
+			{
+				arg->successfulTransitions++;
+				if (arg->successfulTransitions >= 2)
+				{
+					arg->position += _direction;
+					arg->successfulTransitions = 0;
+					// keep direction
+				}
+			} else if( _direction = -arg->direction) {
+				if(arg->successfulTransitions > 0) {
+					arg->successfulTransitions-- ;
+				} else {
+					arg->direction = _direction;
+				}
+			}
+		}
+
+		arg->v1 = w1;
+		arg->v2 = w2;
+	}
+
+private:
 	//   F ->                     I  F1  F2  F3 (+) I
 	//                           _______         _______
 	//               Pin1 ______|       |_______|       |______ Pin1
@@ -130,135 +163,39 @@ public:
 	//               Pin2 __|       |_______|       |_______|   Pin2
 	//   B ->                   I (-) B3  B2  B1  I
 
-	// Starting Encoding is 1 1 (at least for JoyIt Encoder, )
-	static void update(Encoder_internal_state_t *arg)
+	static int8_t getDirectionFromTransition(uint8_t v1, uint8_t v2, uint8_t w1, uint8_t w2)
 	{
-		uint8_t p1val = digitalRead(arg->pin1);
-		uint8_t p2val = digitalRead(arg->pin2);
-
-		auto setInitState = [arg]()
+		if (v1 == 0 && v2 == 0)
 		{
-			arg->state = EncoderStates::INIT;
-		};
-
-		switch (arg->state)
-		{
-		case EncoderStates::INIT:
-			if (p1val == 1 && p2val == 0)
-			{
-				arg->state = EncoderStates::F1;
-			}
-			else if (p1val == 0 && p2val == 1)
-			{
-				arg->state = EncoderStates::B1;
-			}
-			// keep init state
-			break;
-
-		case EncoderStates::F1:
-			if (p1val == 1 && p2val == 0)
-			{
-				arg->stateStayCount++;
-			}
-			else if (p1val == 0 && p2val == 0)
-			{
-				arg->state = EncoderStates::F2;
-			}
-			else
-			{
-				arg->stateBackCount++;
-				setInitState();
-			}
-			break;
-
-		case EncoderStates::F2:
-			if (p1val == 0 && p2val == 0)
-			{
-				arg->stateStayCount++;
-			}
-			else if (p1val == 1 && p2val == 0)
-			{
-				arg->stateBackCount++;
-				arg->state = EncoderStates::F1;
-			}
-			else if (p1val == 0 && p2val == 1)
-			{
-				arg->state = EncoderStates::F3;
-			}
-			else
-			{
-				setInitState();
-			}
-			break;
-
-		case EncoderStates::F3:
-			if (p1val == 0 && p2val == 1)
-			{
-				arg->stateStayCount++;
-			}
-			else if (p1val == 0 && p2val == 0)
-			{
-				arg->stateBackCount++;
-				arg->state = EncoderStates::F2;
-			}
-			else if (p1val == 1 && p2val == 1)
-			{
-				arg->position++;
-				setInitState();
-			}
-			else
-			{
-				setInitState();
-			}
-			break;
-
-		case EncoderStates::B1:;
-			if (p1val == 0 && p2val == 1)
-			{
-				arg->stateStayCount++;
-			}
-			else if (p1val == 0 && p2val == 0)
-			{
-				arg->state = EncoderStates::B2;
-			}
-			else
-			{
-				setInitState();
-			}
-			break;
-
-		case EncoderStates::B2:;
-			if (p1val == 0 && p2val == 0)
-			{
-				arg->stateStayCount++;
-			}
-			else if (p1val == 1 && p2val == 0)
-			{
-				arg->state = EncoderStates::B3;
-			}
-			else
-			{
-				setInitState();
-			}
-			break;
-		case EncoderStates::B3:
-			if (p1val == 1 && p2val == 0)
-			{
-				arg->stateStayCount++;
-			}
-			else if (p1val == 1 && p2val == 1)
-			{
-				arg->position--;
-			}
-			setInitState();
-			break;
-
-		// other transitions are glitches (staying at Init State)
-		// fall trhough here
-		default:
-			setInitState();
-			break;
+			if (w1 == 0 && w2 == 1)
+				return 1;
+			if (w1 == 1 && w2 == 0)
+				return -1;
+			return 0;
 		}
-		arg->lastCall = millis();
+		else if (v1 == 1 && v2 == 1)
+		{
+			if (w1 == 1 && w2 == 0)
+				return 1;
+			if (w1 == 0 && w2 == 1)
+				return -1;
+			return 0;
+		}
+		else if (v1 == 1 && v2 == 0)
+		{
+			if (w1 == 0 && w2 == 0)
+				return 1;
+			if (w1 == 1 && w2 == 1)
+				return -1;
+			return 0;
+		}
+		else if (v1 == 0 && v2 == 1)
+		{
+			if (w1 == 1 && w2 == 1)
+				return 1;
+			if (w1 == 0 && w2 == 0)
+				return -1;
+			return 0;
+		}
 	}
 };

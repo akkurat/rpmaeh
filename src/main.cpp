@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 #include <FastLED.h>
-#include "RP2040_PWM.cpp"
+#include <RP2040_PWM.h>
 // #include "pio_encoder.h"
 
 // How many leds in your strip?
@@ -92,7 +92,7 @@ void loop()
   }
 
   value = knobB->updateAndReturn();
-  
+
   // turn the led on, then pause
   if (value != nullptr)
   {
@@ -102,18 +102,17 @@ void loop()
     FastLED.show();
   }
 
-  // Serial.print("4: ");
-  // Serial.print(digitalRead(4));
-  // Serial.print(" 5: ");
-  // Serial.println(digitalRead(5));
+  Serial.print("4: ");
+  Serial.print(digitalRead(4));
+  Serial.print(" 5: ");
+  Serial.println(digitalRead(5));
 
-  // Serial.print("State: ");
-  // Serial.println(static_cast<std::underlying_type<EncoderStates>::type>(knobA->encoder->getState().state));
-  // Serial.print("num interrupts: ");
-  // Serial.println(knobA->encoder->getState().interruptCount);
-  // Serial.print("num back: ");
-  // Serial.println(knobA->encoder->getState().stateBackCount);
-  // Serial.print("num stay: ");
+  Serial.print("num interrupts: ");
+  Serial.println(knobA->encoder->getState().interruptCount);
+  Serial.print("num trans same direction: ");
+  Serial.println(knobA->encoder->getState().successfulTransitions);
+  Serial.print("drection: ");
+  Serial.println(knobA->encoder->getState().direction);
 
 
 
