@@ -92,6 +92,7 @@ void loop()
   }
 
   value = knobB->updateAndReturn();
+  
   // turn the led on, then pause
   if (value != nullptr)
   {
@@ -101,18 +102,22 @@ void loop()
     FastLED.show();
   }
 
-  Serial.print("4: ");
-  Serial.print(digitalRead(4));
-  Serial.print(" 5: ");
-  Serial.println(digitalRead(5));
+  // Serial.print("4: ");
+  // Serial.print(digitalRead(4));
+  // Serial.print(" 5: ");
+  // Serial.println(digitalRead(5));
 
-  Serial.print("State: ");
-  Serial.println(static_cast<std::underlying_type<EncoderStates>::type>(knobA->encoder->getState().state));
-  Serial.print("num interrupts: ");
-  Serial.println(knobA->encoder->getState().interruptCount);
-  Serial.print("num back: ");
-  Serial.println(knobA->encoder->getState().stateBackCounts);
-  delay(50);
+  // Serial.print("State: ");
+  // Serial.println(static_cast<std::underlying_type<EncoderStates>::type>(knobA->encoder->getState().state));
+  // Serial.print("num interrupts: ");
+  // Serial.println(knobA->encoder->getState().interruptCount);
+  // Serial.print("num back: ");
+  // Serial.println(knobA->encoder->getState().stateBackCount);
+  // Serial.print("num stay: ");
+
+
+
+  delay(250);
 }
 
 // put function declarations here:

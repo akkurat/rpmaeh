@@ -56,7 +56,9 @@ typedef struct
 	uint8_t pin1, pin2;
 	int32_t position = 0;
 	int32_t interruptCount = 0;
-	int32_t stateBackCounts = 0;
+	int32_t stateBackCount = 0;
+	int32_t stateStayCount = 0;
+	unsigned long lastCall = 0;
 
 } Encoder_internal_state_t;
 
@@ -78,17 +80,18 @@ public:
 		delayMicroseconds(2000);
 		attachInterruptParam(_pin1, isrUpdate, CHANGE, encoderState);
 		attachInterruptParam(_pin2, isrUpdate, CHANGE, encoderState);
-		// update_finishup();  // to force linker to include the code (does not work)
 	}
 
 	inline int32_t read()
 	{
+		update(encoderState);
 		int32_t ret = encoderState->position;
 		return ret;
 	}
 	inline int32_t readAndReset()
 	{
 		noInterrupts();
+		update(encoderState);
 		int32_t ret = encoderState->position;
 		encoderState->position = 0;
 		interrupts();
@@ -96,6 +99,7 @@ public:
 	}
 	inline void write(int32_t p)
 	{
+		update(encoderState);
 		encoderState->position = p;
 	}
 
@@ -114,7 +118,9 @@ public:
 
 	static void isrUpdate(void *arg)
 	{
-		update(static_cast<Encoder_internal_state_t *>(arg));
+		auto carg = static_cast<Encoder_internal_state_t *>(arg);
+			carg->interruptCount++;
+			update(carg);
 	}
 
 	//   F ->                     I  F1  F2  F3 (+) I
@@ -133,7 +139,6 @@ public:
 		auto setInitState = [arg]()
 		{
 			arg->state = EncoderStates::INIT;
-			arg->interruptCount++;
 		};
 
 		switch (arg->state)
@@ -151,21 +156,29 @@ public:
 			break;
 
 		case EncoderStates::F1:
-			if (p1val == 0 && p2val == 0)
+			if (p1val == 1 && p2val == 0)
+			{
+				arg->stateStayCount++;
+			}
+			else if (p1val == 0 && p2val == 0)
 			{
 				arg->state = EncoderStates::F2;
 			}
 			else
 			{
-				arg->stateBackCounts++;
+				arg->stateBackCount++;
 				setInitState();
 			}
 			break;
 
 		case EncoderStates::F2:
-			if (p1val == 1 && p2val == 0)
+			if (p1val == 0 && p2val == 0)
 			{
-				arg->stateBackCounts++;
+				arg->stateStayCount++;
+			}
+			else if (p1val == 1 && p2val == 0)
+			{
+				arg->stateBackCount++;
 				arg->state = EncoderStates::F1;
 			}
 			else if (p1val == 0 && p2val == 1)
@@ -179,9 +192,13 @@ public:
 			break;
 
 		case EncoderStates::F3:
-			if (p1val == 0 && p2val == 0)
+			if (p1val == 0 && p2val == 1)
 			{
-				arg->stateBackCounts++;
+				arg->stateStayCount++;
+			}
+			else if (p1val == 0 && p2val == 0)
+			{
+				arg->stateBackCount++;
 				arg->state = EncoderStates::F2;
 			}
 			else if (p1val == 1 && p2val == 1)
@@ -196,7 +213,11 @@ public:
 			break;
 
 		case EncoderStates::B1:;
-			if (p1val == 0 && p2val == 0)
+			if (p1val == 0 && p2val == 1)
+			{
+				arg->stateStayCount++;
+			}
+			else if (p1val == 0 && p2val == 0)
 			{
 				arg->state = EncoderStates::B2;
 			}
@@ -207,7 +228,11 @@ public:
 			break;
 
 		case EncoderStates::B2:;
-			if (p1val == 1 && p2val == 0)
+			if (p1val == 0 && p2val == 0)
+			{
+				arg->stateStayCount++;
+			}
+			else if (p1val == 1 && p2val == 0)
 			{
 				arg->state = EncoderStates::B3;
 			}
@@ -217,7 +242,11 @@ public:
 			}
 			break;
 		case EncoderStates::B3:
-			if (p1val == 1 && p2val == 1)
+			if (p1val == 1 && p2val == 0)
+			{
+				arg->stateStayCount++;
+			}
+			else if (p1val == 1 && p2val == 1)
 			{
 				arg->position--;
 			}
@@ -230,5 +259,6 @@ public:
 			setInitState();
 			break;
 		}
+		arg->lastCall = millis();
 	}
 };
