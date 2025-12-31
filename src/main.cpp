@@ -1,10 +1,11 @@
 #define MDEBUG = 1
-#include "Knobreader.h"
+
+#include "Knobreader.cpp"
 
 #include <Arduino.h>
 
 #include <FastLED.h>
-#include "RP2040_PWM.h"
+#include "RP2040_PWM.cpp"
 // #include "pio_encoder.h"
 
 // How many leds in your strip?
@@ -33,7 +34,8 @@ void resetKnobB()
   knobB->setValue(0);
 }
 
-void resetAll() {
+void resetAll()
+{
   resetKnobA();
   resetKnobB();
 }
@@ -99,6 +101,17 @@ void loop()
     FastLED.show();
   }
 
+  Serial.print("4: ");
+  Serial.print(digitalRead(4));
+  Serial.print(" 5: ");
+  Serial.println(digitalRead(5));
+
+  Serial.print("State: ");
+  Serial.println(static_cast<std::underlying_type<EncoderStates>::type>(knobA->encoder->getState().state));
+  Serial.print("num interrupts: ");
+  Serial.println(knobA->encoder->getState().interruptCount);
+  Serial.print("num back: ");
+  Serial.println(knobA->encoder->getState().stateBackCounts);
   delay(50);
 }
 

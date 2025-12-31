@@ -1,4 +1,4 @@
-#include <Encoder.h>
+#include <Encoder.cpp>
 
 class KnobReader
 {
@@ -8,12 +8,12 @@ private:
     boolean valuesetmanually = false;
 
 public:
-    Encoder encoder;
+    Encoder * encoder;
     int min_value{0}, max_value{1024};
 
-    KnobReader(uint8_t pin1, uint8_t pin2) : encoder(Encoder(pin1, pin2)) {};
+    KnobReader(uint8_t pin1, uint8_t pin2) : encoder(new Encoder(pin1, pin2)) {};
 
-    KnobReader(uint8_t pin1, uint8_t pin2, uint min, uint max) : encoder(Encoder(pin1, pin2)), min_value(min), max_value(max)
+    KnobReader(uint8_t pin1, uint8_t pin2, uint min, uint max) : encoder(new Encoder(pin1, pin2)), min_value(min), max_value(max)
     {
         Serial.println("KnobReader");
     }
@@ -21,13 +21,8 @@ public:
     int *updateAndReturn()
     {
         // do not rely on internal value
-        auto delta = encoder.readAndReset();
+        auto delta = encoder->readAndReset();
 
-        if (delta != 0)
-        {
-            Serial.print("orig delta: ");
-            Serial.println(delta);
-        }
         if (delta == 0 && !valuesetmanually)
         {
             return nullptr;
@@ -37,7 +32,7 @@ public:
         if (lastRead)
         {
             const auto diff = (temp - lastRead);
-            speed = abs(delta) * 20.0 / diff;
+            speed = abs(delta) * 50.0 / diff;
 #ifdef MDEBUG
             Serial.print("diff: ");
             Serial.print(diff, 3);
