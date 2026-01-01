@@ -3,7 +3,7 @@
 class KnobReader
 {
 private:
-    long lastRead = 0, lastSpeed = 1;
+    long lastRead = 0, lastSpeed = 0;
     int value = 0;
     boolean valuesetmanually = false;
 
@@ -32,7 +32,7 @@ public:
         if (lastRead)
         {
             const auto diff = (temp - lastRead);
-            speed = abs(delta) * 500.0 / diff;
+            speed = abs(delta) * 300.0 / diff;
 #ifdef MDEBUG
             Serial.print("diff: ");
             Serial.print(diff, 3);
@@ -46,17 +46,17 @@ public:
         Serial.print(delta);
 #endif
 auto avgSpeed = (speed+lastSpeed)/2;
-        if (avgSpeed >= 1.5)
+        if (avgSpeed > 1.5)
         {
             delta *= 10;
         }
-        else if (avgSpeed >= 1)
+        else if (avgSpeed > 1)
         {
             delta *= 5;
         }
-        else if (avgSpeed >= 0.5)
+        else if (avgSpeed > 0.5)
         {
-            delta *= 3;
+            delta *= 2;
         }
         lastSpeed = speed;
 

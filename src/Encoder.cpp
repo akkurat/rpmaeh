@@ -136,13 +136,13 @@ public:
 			if (_direction == arg->direction)
 			{
 				arg->successfulTransitions++;
-				if (arg->successfulTransitions >= 2)
+				if (arg->successfulTransitions >= 6)
 				{
 					arg->position += _direction;
-					arg->successfulTransitions = 0;
+					arg->successfulTransitions = 2;
 					// keep direction
 				}
-			} else if( _direction = -arg->direction) {
+			} else if( _direction == -arg->direction) {
 				if(arg->successfulTransitions > 0) {
 					arg->successfulTransitions-- ;
 				} else {

@@ -2,10 +2,11 @@
 
 #include "Knobreader.cpp"
 
+#include "pwm_helper.c"
+
 #include <Arduino.h>
 
 #include <FastLED.h>
-#include <RP2040_PWM.h>
 // #include "pio_encoder.h"
 
 // How many leds in your strip?
@@ -18,11 +19,9 @@ CRGB leds[NUM_LEDS];
 
 // PioEncoder encA(p3);
 
-RP2040_PWM *pwmA;
-RP2040_PWM *pwmB;
 
-auto fA = 20.0f;
-auto fB = 200.0f;
+auto fA = 8;
+auto fB = 8;
 KnobReader *knobA;
 KnobReader *knobB;
 void resetKnobA()
@@ -39,6 +38,12 @@ void resetAll()
   resetKnobA();
   resetKnobB();
 }
+uint sliceL;
+uint channelL;
+uint sliceA;
+uint channelA;
+uint sliceB;
+uint channelB;
 
 // todo: make a motor controller abstraction
 void setup()
@@ -47,10 +52,6 @@ void setup()
   delay(2000);
   Serial.write("Hello");
   Serial.println(" gagi");
-  pwmA = new RP2040_PWM(p19, fA, 0);
-  pwmB = new RP2040_PWM(p20, fB, 0);
-  pwmA->enablePWM();
-  pwmB->enablePWM();
   // Uncomment/edit one of the following lines for your leds arrangement.
   // ## Clockless types ##
   FastLED.addLeds<WS2812, DATA_PIN>(leds, NUM_LEDS); // GRB ordering is assumed
@@ -75,6 +76,19 @@ void setup()
   pinMode(p20, OUTPUT);
   pinMode(p19, OUTPUT);
   pinMode(p18, OUTPUT);
+  pinMode(p25, OUTPUT);
+
+  gpio_set_function(PICO_DEFAULT_LED_PIN, GPIO_FUNC_PWM);
+
+  gpio_set_function(19, GPIO_FUNC_PWM);
+  gpio_set_function(20, GPIO_FUNC_PWM);
+  sliceL = pwm_gpio_to_slice_num(PICO_DEFAULT_LED_PIN);
+  channelL = pwm_gpio_to_channel(PICO_DEFAULT_LED_PIN);
+  sliceA = pwm_gpio_to_slice_num(19);
+  channelA = pwm_gpio_to_channel(19);
+  sliceB = pwm_gpio_to_slice_num(20);
+  channelB = pwm_gpio_to_channel(20);
+  pwm_set_freq_duty(sliceL, channelL, 8, 2);
 }
 
 void loop()
@@ -85,7 +99,8 @@ void loop()
   if (value != nullptr)
   {
     digitalWrite(p18, *value < 0);
-    pwmA->setPWM(p19, fA, abs(*value));
+    pwm_set_freq_duty(sliceA, channelA, 10, *value);
+
     leds[0] = (leds[0] & 0xFFFF00) | (abs(*value) & 0x0000FF);
 
     FastLED.show();
@@ -97,24 +112,22 @@ void loop()
   if (value != nullptr)
   {
     digitalWrite(p21, *value < 0);
-    pwmB->setPWM(p20, fB, abs(*value));
+    pwm_set_freq_duty(sliceB, channelB, 2000, *value);
     leds[0] = (leds[0] & 0xFF00FF) | (abs(*value) << 8);
     FastLED.show();
   }
 
-  Serial.print("4: ");
-  Serial.print(digitalRead(4));
-  Serial.print(" 5: ");
-  Serial.println(digitalRead(5));
+  // Serial.print("4: ");
+  // Serial.print(digitalRead(4));
+  // Serial.print(" 5: ");
+  // Serial.println(digitalRead(5));
 
-  Serial.print("num interrupts: ");
-  Serial.println(knobA->encoder->getState().interruptCount);
-  Serial.print("num trans same direction: ");
-  Serial.println(knobA->encoder->getState().successfulTransitions);
-  Serial.print("drection: ");
-  Serial.println(knobA->encoder->getState().direction);
-
-
+  // Serial.print("num interrupts: ");
+  // Serial.println(knobA->encoder->getState().interruptCount);
+  // Serial.print("num trans same direction: ");
+  // Serial.println(knobA->encoder->getState().successfulTransitions);
+  // Serial.print("drection: ");
+  // Serial.println(knobA->encoder->getState().direction);
 
   delay(250);
 }
